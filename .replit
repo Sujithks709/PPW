@@ -1,0 +1,6 @@
+run ="python main.py"
+entrypoint = "README.md"
+modules =["python-base-3.13"]
+
+[nix]
+channel = "stable-24_05"
