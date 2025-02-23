@@ -1,12 +1,13 @@
 
 { pkgs }: {
   deps = [
-    pkgs.libGLU
+    pkgs.python3Packages.pip
     pkgs.libGL
+    pkgs.libGLU
     pkgs.xorg.libX11
     pkgs.xorg.libXrender
     pkgs.xorg.libXext
     pkgs.opencv
-    pkgs.python3Packages.dxf2svg
+    pkgs.mesa
   ];
 }
