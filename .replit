@@ -1,3 +1,11 @@
 run = "python app.py"
 entrypoint = "README.md"
 modules = ["python-base-3.13"]
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
