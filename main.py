@@ -1,3 +1,3 @@
-if __name__=="_main_":
-  print ("Hello World")
-  
+
+if __name__ == "__main__":
+    print("Hello World")
