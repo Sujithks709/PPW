@@ -4,80 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perforation DXF Generator</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        #preview {
-            max-width: 100%;
-            max-height: 300px;
-            display: none;
-            border: 1px solid #ccc;
-            margin-top: 10px;
-        }
+        body { font-family: Arial, sans-serif; text-align: center; }
+        .preview-container { display: flex; justify-content: center; }
+        img, svg { border: 1px solid black; margin-top: 10px; max-width: 100%; }
     </style>
 </head>
 <body>
-    <h1>Perforation DXF Generator</h1>
+    <h2>Perforation DXF Generator</h2>
+    <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" name="image" required>
+        <br><br>
+        <label>Pattern Type:</label>
+        <select name="pattern_type">
+            <option value="staggered">Staggered</option>
+            <option value="non-staggered">Non-Staggered</option>
+        </select>
+        <br><br>
+        <label>Spacing (mm):</label>
+        <input type="number" name="spacing" value="50" min="10" required>
+        <br><br>
+        <label>
+            <input type="checkbox" name="enable_colors"> Enable Colors
+        </label>
+        <br><br>
+        <button type="submit">Generate DXF</button>
+    </form>
 
-    <!-- Upload Image -->
-    <label for="imageUpload">Upload Image:</label>
-    <input type="file" id="imageUpload" accept="image/*">
-    <br>
+    <h3>Preview:</h3>
+    <div class="preview-container">
+        <img id="image-preview" style="display:none;">
+        <svg id="svg-preview" style="display:none;"></svg>
+    </div>
 
-    <!-- Image Preview -->
-    <img id="preview">
-
-    <!-- Perforation Type -->
-    <label for="patternType">Perforation Type:</label>
-    <select id="patternType">
-        <option value="staggered">Staggered</option>
-        <option value="non-staggered">Non-Staggered</option>
-    </select>
-    <br>
-
-    <!-- Generate DXF Button -->
-    <button onclick="uploadImage()">Generate DXF</button>
+    <h3>Download:</h3>
+    <a id="download-dxf" style="display:none;" download>Download DXF</a>
 
     <script>
-        document.getElementById("imageUpload").addEventListener("change", function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById("preview").src = e.target.result;
-                    document.getElementById("preview").style.display = "block";
-                };
-                reader.readAsDataURL(file);
-            }
+        $("#upload-form").submit(function(event) {
+            event.preventDefault();
+            var formData = new FormData(this);
+
+            $.ajax({
+                url: "/generate_dxf",
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response) {
+                    $("#download-dxf").attr("href", response.dxf).show();
+                    $("#svg-preview").attr("src", response.svg).show();
+                }
+            });
         });
-
-        function uploadImage() {
-            const fileInput = document.getElementById("imageUpload");
-            const patternType = document.getElementById("patternType").value;
-
-            if (!fileInput.files.length) {
-                alert("Please upload an image first!");
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append("image", fileInput.files[0]);
-            formData.append("pattern_type", patternType);
-
-            fetch("/generate_dxf", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "perforation.dxf";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            })
-            .catch(error => console.error("Error:", error));
-        }
     </script>
 </body>
 </html>
