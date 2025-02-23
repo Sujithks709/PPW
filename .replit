@@ -1,6 +1,3 @@
-run ="python main.py"
+run = "python app.py"
 entrypoint = "README.md"
-modules =["python-base-3.13"]
-
-[nix]
-channel = "stable-24_05"
+modules = ["python-base-3.13"]
