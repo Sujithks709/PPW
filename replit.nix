@@ -1,8 +1,11 @@
-{pkgs}: {
+
+{ pkgs }: {
   deps = [
     pkgs.libGLU
     pkgs.libGL
-    pkgs.python3Packages.dxf2svg 
+    pkgs.xorg.libX11
+    pkgs.xorg.libXrender
+    pkgs.xorg.libXext
+    pkgs.opencv
   ];
 }
-
