@@ -58,5 +58,5 @@ def generate_dxf():
     return send_file(dxf_buffer, download_name="perforation.dxf", as_attachment=True)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=3000, debug=True)
 
