@@ -4,60 +4,274 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Perforation DXF Generator</title>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        .preview-container { display: flex; justify-content: center; }
-        img, svg { border: 1px solid black; margin-top: 10px; max-width: 100%; }
+        .remove-hole {
+            border-radius: 0 0.25rem 0.25rem 0;
+        }
+        .error-message {
+            display: none;
+            margin-bottom: 1rem;
+        }
+        /* Custom progress bar */
+        .progress {
+            height: 25px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        /* Loading spinner */
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        /* Completion message */
+        #completion-message {
+            font-size: 1.1rem;
+        }
+        /* Download button */
+        #download-dxf {
+            font-size: 1.2rem;
+            padding: 10px 20px;
+        }
     </style>
 </head>
 <body>
-    <h2>Perforation DXF Generator</h2>
-    <form id="upload-form" enctype="multipart/form-data">
-        <input type="file" name="image" required>
-        <br><br>
-        <label>Pattern Type:</label>
-        <select name="pattern_type">
-            <option value="staggered">Staggered</option>
-            <option value="non-staggered">Non-Staggered</option>
-        </select>
-        <br><br>
-        <label>Spacing (mm):</label>
-        <input type="number" name="spacing" value="50" min="10" required>
-        <br><br>
-        <label>
-            <input type="checkbox" name="enable_colors"> Enable Colors
-        </label>
-        <br><br>
-        <button type="submit">Generate DXF</button>
-    </form>
+    <div class="container mt-5">
+        <h2 class="text-center">Perforation DXF Generator</h2>
 
-    <h3>Preview:</h3>
-    <div class="preview-container">
-        <img id="image-preview" style="display:none;">
-        <svg id="svg-preview" style="display:none;"></svg>
+        <!-- Error Message -->
+        <div id="error-message" class="alert alert-danger error-message"></div>
+
+        <!-- Upload Form -->
+        <form id="upload-form" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="image" class="form-label">Upload Image</label>
+                <input type="file" id="image" name="image" class="form-control" accept=".jpg,.jpeg,.png" required>
+                <div id="file-feedback" class="form-text"></div>
+                <div class="invalid-feedback">Please upload a valid image file (JPG, JPEG, PNG).</div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Pattern Type</label>
+                <select name="pattern_type" id="pattern_type" class="form-select">
+                    <option value="staggered">Staggered</option>
+                    <option value="non-staggered">Non-Staggered</option>
+                </select>
+            </div>
+
+            <!-- Staggered Options -->
+            <div id="staggered-options" style="display: none;">
+                <div class="mb-3">
+                    <label for="stagger_pitch" class="form-label">Stagger Pitch (mm)</label>
+                    <input type="number" id="stagger_pitch" name="stagger_pitch" class="form-control" value="50" min="1" required>
+                </div>
+                <div class="mb-3">
+                    <label for="gauge_distance" class="form-label">Gauge Distance (mm)</label>
+                    <input type="number" id="gauge_distance" name="gauge_distance" class="form-control" value="50" min="1" required>
+                </div>
+            </div>
+
+            <!-- Non-Staggered Options -->
+            <div id="non-staggered-options" style="display: none;">
+                <div class="mb-3">
+                    <label for="horizontal_spacing" class="form-label">Horizontal Spacing (mm)</label>
+                    <input type="number" id="horizontal_spacing" name="horizontal_spacing" class="form-control" value="50" min="1" required>
+                </div>
+                <div class="mb-3">
+                    <label for="vertical_spacing" class="form-label">Vertical Spacing (mm)</label>
+                    <input type="number" id="vertical_spacing" name="vertical_spacing" class="form-control" value="50" min="1" required>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Hole Diameters (mm) - Up to 10</label>
+                <div id="hole-diameters">
+                    <div class="input-group mb-2">
+                        <input type="number" name="hole_sizes[]" class="form-control" placeholder="Enter hole size" min="1" required>
+                        <button type="button" class="btn btn-danger remove-hole" style="display: none;">X</button>
+                    </div>
+                </div>
+                <button type="button" id="add-hole" class="btn btn-secondary">+ Add Another Hole Size</button>
+            </div>
+
+            <div class="mb-3">
+                <input type="checkbox" id="enable_color" name="enable_color">
+                <label for="enable_color">Enable Colors for Different Hole Sizes</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Generate DXF</button>
+            <button type="button" id="clear-form" class="btn btn-warning mt-3">Clear Form</button>
+        </form>
+
+        <!-- Progress Container -->
+        <div id="progress-container" class="mt-3" style="display: none;">
+            <div class="progress">
+                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" 
+                     role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    0%
+                </div>
+            </div>
+            <p id="progress-text" class="text-center mt-2">Processing...</p>
+        </div>
+
+        <!-- Completion Message -->
+        <div id="completion-message" class="alert alert-success mt-3" style="display: none;">
+            <strong>Process Completed!</strong> Your DXF file is ready for download.
+        </div>
+
+        <!-- Download Button -->
+        <div class="mt-4 text-center" id="download-container" style="display: none;">
+            <a id="download-dxf" class="btn btn-success btn-lg" download>
+                <i class="bi bi-download"></i> Download DXF
+            </a>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading-spinner" class="text-center mt-3" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Generating DXF file...</p>
+        </div>
     </div>
 
-    <h3>Download:</h3>
-    <a id="download-dxf" style="display:none;" download>Download DXF</a>
-
     <script>
-        $("#upload-form").submit(function(event) {
-            event.preventDefault();
-            var formData = new FormData(this);
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById("error-message");
+            errorDiv.innerText = message;
+            errorDiv.style.display = "block";
+            setTimeout(() => errorDiv.style.display = "none", 5000);
+        }
 
-            $.ajax({
-                url: "/generate_dxf",
-                type: "POST",
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function(response) {
-                    $("#download-dxf").attr("href", response.dxf).show();
-                    $("#svg-preview").attr("src", response.svg).show();
-                }
-            });
+        // Handle pattern type change
+        document.getElementById("pattern_type").addEventListener("change", function() {
+            const isStaggered = this.value === "staggered";
+            document.getElementById("staggered-options").style.display = isStaggered ? "block" : "none";
+            document.getElementById("non-staggered-options").style.display = isStaggered ? "none" : "block";
         });
+
+        // Add hole size input
+        document.getElementById("add-hole").addEventListener("click", function() {
+            const holeContainer = document.getElementById("hole-diameters");
+            const inputs = holeContainer.getElementsByClassName("input-group");
+            if (inputs.length < 10) {
+                const newInput = document.createElement("div");
+                newInput.classList.add("input-group", "mb-2");
+                newInput.innerHTML = `<input type="number" name="hole_sizes[]" class="form-control" placeholder="Enter hole size" min="1" required>
+                                      <button type="button" class="btn btn-danger remove-hole">X</button>`;
+                holeContainer.appendChild(newInput);
+                updateRemoveButtons();
+            }
+        });
+
+        // Remove hole size input
+        document.getElementById("hole-diameters").addEventListener("click", function(event) {
+            if (event.target.classList.contains("remove-hole")) {
+                event.target.parentElement.remove();
+                updateRemoveButtons();
+            }
+        });
+
+        // Update remove buttons visibility
+        function updateRemoveButtons() {
+            const buttons = document.querySelectorAll(".remove-hole");
+            buttons.forEach(button => button.style.display = buttons.length > 1 ? "inline-block" : "none");
+        }
+
+        // Handle file selection
+        document.getElementById("image").addEventListener("change", function() {
+            const fileFeedback = document.getElementById("file-feedback");
+            if (this.files.length > 0) {
+                fileFeedback.innerText = `Selected file: ${this.files[0].name}`;
+            } else {
+                fileFeedback.innerText = "";
+            }
+        });
+
+        // Clear form
+        document.getElementById("clear-form").addEventListener("click", function() {
+            document.getElementById("upload-form").reset();
+            document.getElementById("hole-diameters").innerHTML = `
+                <div class="input-group mb-2">
+                    <input type="number" name="hole_sizes[]" class="form-control" placeholder="Enter hole size" min="1" required>
+                    <button type="button" class="btn btn-danger remove-hole" style="display: none;">X</button>
+                </div>`;
+            document.getElementById("download-container").style.display = "none";
+            document.getElementById("progress-container").style.display = "none";
+            document.getElementById("completion-message").style.display = "none";
+            document.getElementById("file-feedback").innerText = "";
+        });
+
+        // Show loading spinner and progress bar
+        function showLoading() {
+            document.getElementById("loading-spinner").style.display = "block";
+            document.getElementById("progress-container").style.display = "block";
+            document.getElementById("completion-message").style.display = "none";
+            document.getElementById("download-container").style.display = "none";
+        }
+
+        // Update progress bar
+        function updateProgress(progress) {
+            const progressBar = document.getElementById("progress-bar");
+            const progressText = document.getElementById("progress-text");
+            progressBar.style.width = `${progress}%`;
+            progressBar.innerText = `${progress}%`;
+            progressText.innerText = `Processing... ${progress}%`;
+        }
+
+        // Show completion message and download button
+        function showCompletion() {
+            document.getElementById("loading-spinner").style.display = "none";
+            document.getElementById("progress-container").style.display = "none";
+            document.getElementById("completion-message").style.display = "block";
+            document.getElementById("download-container").style.display = "block";
+        }
+
+        // Handle form submission
+        document.getElementById("upload-form").onsubmit = async function(event) {
+            event.preventDefault();
+            showLoading(); // Show loading spinner and progress bar
+
+            const formData = new FormData(this);
+            try {
+                const response = await fetch("/generate_dxf", { method: "POST", body: formData });
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById("download-dxf").href = data.dxf;
+                    checkProgress(); // Start polling for progress
+                } else {
+                    const error = await response.text();
+                    showError(`Error: ${error}`);
+                }
+            } catch (error) {
+                showError(`An error occurred: ${error.message}`);
+            }
+        };
+
+        // Check progress
+        async function checkProgress() {
+            const response = await fetch("/progress");
+            if (response.ok) {
+                const data = await response.json();
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                const progress = data.value;
+                updateProgress(progress); // Update progress bar
+                if (progress < 100) {
+                    setTimeout(checkProgress, 1000); // Poll every second
+                } else {
+                    showCompletion(); // Show completion message and download button
+                }
+            }
+        }
     </script>
 </body>
 </html>
